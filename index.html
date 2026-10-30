@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Froth — Beer Tasting Journal</title>
+<style>
+:root{ --bg:#F2F2F7; --card:#fff; --ink:#1c1c1e; --sub:#8e8e93; --line:#e5e5ea; --acc:#B7791F; --acc-soft:#fbf0d9; }
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body{ margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Helvetica,Arial,sans-serif; padding-bottom:env(safe-area-inset-bottom); }
+header{ padding:calc(env(safe-area-inset-top) + 18px) 20px 10px; }
+header h1{ margin:0; font-size:32px; letter-spacing:-.5px; }
+header p{ margin:4px 0 0; color:var(--sub); font-size:14px; }
+.tabs{ display:flex; gap:8px; padding:10px 20px 4px; }
+.tab{ flex:1; border:0; border-radius:12px; padding:10px; font-size:15px; font-weight:600; background:#e9e9ee; color:var(--sub); cursor:pointer; }
+.tab.on{ background:var(--ink); color:#fff; }
+main{ padding:10px 16px 40px; max-width:640px; margin:0 auto; }
+.card{ background:var(--card); border-radius:16px; padding:16px; margin-top:12px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+.card h2{ margin:0 0 12px; font-size:13px; text-transform:uppercase; letter-spacing:1px; color:var(--sub); }
+.field{ margin-bottom:12px; position:relative; }
+.field label{ display:block; font-size:13px; color:var(--sub); margin-bottom:6px; }
+.field input{ width:100%; font-size:16px; padding:12px; border:1px solid var(--line); border-radius:12px; background:#fafafa; }
+.field input:focus{ outline:none; border-color:var(--acc); background:#fff; }
+.combo-list{ position:absolute; z-index:20; left:0; right:0; top:100%; margin-top:4px; background:#fff; border:1px solid var(--line); border-radius:12px; max-height:220px; overflow-y:auto; -webkit-overflow-scrolling:touch; box-shadow:0 8px 24px rgba(0,0,0,.12); display:none; }
+.combo-list.open{ display:block; }
+.combo-list button{ display:block; width:100%; text-align:left; border:0; background:none; padding:12px; font-size:16px; cursor:pointer; }
+.combo-list button:active{ background:var(--acc-soft); }
+.combo-list button.custom{ color:var(--acc); font-weight:600; border-top:1px solid var(--line); }
+.combo-list .sub{ display:block; font-size:12px; color:var(--sub); font-weight:400; }
+.btn{ display:block; width:100%; border:0; border-radius:14px; padding:15px; font-size:17px; font-weight:700; cursor:pointer; }
+.btn.primary{ background:var(--acc); color:#fff; }
+.btn.ghost{ background:#e9e9ee; color:var(--ink); margin-top:8px; }
+.btn{ transition:transform .1s ease, opacity .1s ease; -webkit-tap-highlight-color:transparent; }
+.btn:active{ transform:scale(.97); opacity:.8; }
+.btn.small{ padding:10px; font-size:15px; }
+.spec{ display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line); font-size:15px; }
+.spec:last-child{ border-bottom:0; }
+.spec .k{ color:var(--sub); }
+.spec .v{ font-weight:600; text-align:right; }
+.stars{ display:flex; gap:6px; margin:6px 0 12px; }
+.stars button{ border:0; background:none; font-size:34px; cursor:pointer; color:#d1d1d6; padding:2px; }
+.stars button.lit{ color:#f5a623; }
+.chips{ display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 12px; }
+.chips button{ border:1px solid var(--line); background:#fafafa; border-radius:20px; padding:8px 14px; font-size:14px; cursor:pointer; }
+.chips button.on{ background:var(--acc); border-color:var(--acc); color:#fff; }
+.input-wrap{ position:relative; }
+.input-wrap input{ padding-right:42px; }
+.clr-x{ position:absolute; right:8px; top:50%; transform:translateY(-50%); width:28px; height:28px; border-radius:50%; border:0; background:#e9e9ee; color:var(--sub); font-size:16px; line-height:1; cursor:pointer; z-index:21; }
+.clr-x:active{ transform:translateY(-50%) scale(.9); }
+.log-item{ border-bottom:1px solid var(--line); padding:12px 0; cursor:pointer; }
+.log-item:last-child{ border-bottom:0; }
+.log-item:active{ background:rgba(0,0,0,.045); }
+.log-item .meta{ font-size:13px; color:var(--sub); margin-bottom:4px; }
+.log-item .sel{ font-size:15px; font-weight:600; margin-bottom:4px; }
+.log-item .notes{ font-size:14px; color:#3a3a3c; line-height:1.5; }
+.log-item .r{ color:#f5a623; letter-spacing:2px; }
+.empty{ text-align:center; color:var(--sub); padding:30px 10px; font-size:15px; }
+.dimrow{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.dimrow .dl{ flex:0 0 92px; font-size:14px; color:var(--sub); }
+.dimbar{ display:flex; gap:5px; flex:1; }
+.dimbar button{ flex:1; height:24px; border:1px solid var(--line); background:#fafafa; border-radius:7px; cursor:pointer; padding:0; }
+.dimbar button.on{ background:var(--acc); border-color:var(--acc); }
+.dimview{ display:flex; align-items:center; gap:8px; margin:4px 0; }
+.dimview .dl{ flex:0 0 82px; font-size:13px; color:var(--sub); }
+.dimtrack{ flex:1; height:9px; background:#e9e9ee; border-radius:5px; overflow:hidden; }
+.dimfill{ height:100%; background:var(--acc); border-radius:5px; }
+.dimview .dv{ flex:0 0 14px; font-size:13px; font-weight:600; text-align:right; }
+.hidden{ display:none !important; }
+#cam-wrap{ position:fixed; inset:0; z-index:110; background:#000; }
+#cam-video{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+#cam-hint{ position:absolute; left:0; right:0; top:calc(env(safe-area-inset-top) + 22px); text-align:center; color:#fff; font-size:17px; font-weight:600; padding:0 24px; text-shadow:0 1px 8px rgba(0,0,0,.6); }
+#cam-hint .sub{ font-size:13px; font-weight:400; color:rgba(255,255,255,.85); margin-top:4px; }
+#cam-frame{ position:absolute; left:50%; top:46%; transform:translate(-50%,-50%); width:min(92vw,540px); aspect-ratio:4/3; max-height:58vh; border:2px solid rgba(255,255,255,.95); border-radius:12px; box-shadow:0 0 0 9999px rgba(0,0,0,.55); pointer-events:none; }
+#cam-frame .grid{ position:absolute; background:rgba(255,255,255,.35); }
+#cam-frame .gl-v{ top:0; bottom:0; width:1px; }
+#cam-frame .gl-h{ left:0; right:0; height:1px; }
+#cam-frame .cnr{ position:absolute; width:22px; height:22px; border:0 solid #fff; }
+#cam-frame .tl{ left:-2px; top:-2px; border-left-width:4px; border-top-width:4px; border-top-left-radius:12px; }
+#cam-frame .tr{ right:-2px; top:-2px; border-right-width:4px; border-top-width:4px; border-top-right-radius:12px; }
+#cam-frame .bl{ left:-2px; bottom:-2px; border-left-width:4px; border-bottom-width:4px; border-bottom-left-radius:12px; }
+#cam-frame .br{ right:-2px; bottom:-2px; border-right-width:4px; border-bottom-width:4px; border-bottom-right-radius:12px; }
+#cam-bar{ position:absolute; left:0; right:0; bottom:0; padding:14px 22px calc(env(safe-area-inset-bottom) + 18px); display:flex; align-items:center; justify-content:space-between; }
+.cam-side{ border:0; background:rgba(255,255,255,.16); color:#fff; font-size:15px; font-weight:600; padding:10px 18px; border-radius:20px; cursor:pointer; min-width:84px; }
+.cam-side:active{ background:rgba(255,255,255,.3); }
+#cam-shutter{ width:72px; height:72px; border-radius:50%; border:4px solid #fff; background:rgba(255,255,255,.25); cursor:pointer; padding:0; }
+#cam-shutter:active{ transform:scale(.93); background:#fff; }
+#photo-view{ position:fixed; inset:0; z-index:120; background:rgba(0,0,0,.93); display:flex; align-items:center; justify-content:center; padding:16px; }
+#photo-view.pv-hidden{ display:none; }
+#photo-view img{ max-width:100%; max-height:100%; border-radius:10px; }
+</style></head>
+<body>
+<header>
+  <h1>Froth</h1>
+  <p>Beer tasting journal</p>
+</header>
+<nav class="tabs">
+  <button class="tab on" id="tab-taste">Taste</button>
+  <button class="tab" id="tab-log">Beer log</button>
+</nav>
+<main>
+  <div id="view-taste">
+    <div class="card">
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="btn ghost small" id="scan-btn" style="flex:1;width:auto">Scan</button>
+        <button class="btn ghost small" id="clear-btn" style="flex:0 0 auto;width:auto">Clear</button>
+      </div>
+      <input type="file" id="scan-file" accept="image/*" class="hidden">
+      <div class="field hidden" id="scan-status-wrap"><label>Scan result</label><div id="scan-status" style="font-size:14px;color:var(--sub)"></div></div>
+      <div id="scan-photo-wrap" class="hidden" style="margin-bottom:12px">
+        <img id="scan-photo-preview" alt="Label photo" style="width:100%;height:auto;max-height:340px;object-fit:contain;background:#f7f1e3;border-radius:10px">
+        <div style="font-size:12px;color:var(--sub);margin-top:4px">This label photo will be saved with the log entry.</div>
+        <div><button class="btn ghost small" id="scan-photo-remove" type="button" style="width:auto;margin-top:6px">Remove photo</button></div>
+      </div>
+      <div class="field"><label>Country</label><div class="input-wrap"><input id="in-country" autocomplete="off" placeholder="Type to search…"><button type="button" class="clr-x hidden" id="clear-country" aria-label="Clear country">×</button><div class="combo-list" id="list-country"></div></div></div>
+      <div class="field"><label>Brewery</label><input id="in-brewery" type="text" autocomplete="off" placeholder="Brewery — e.g. Tree House Brewing"></div>
+      <div class="field"><label>Beer</label><input id="in-beer" type="text" autocomplete="off" placeholder="Beer name — e.g. Julius"></div>
+      <div class="field"><label>Style</label><div class="input-wrap"><input id="in-style" autocomplete="off" placeholder="Type to search…"><button type="button" class="clr-x hidden" id="clear-style" aria-label="Clear style">×</button><div class="combo-list" id="list-style"></div></div></div>
+      <div style="display:flex;gap:10px">
+        <div class="field" style="flex:1"><label>ABV (%)</label><input id="in-abv" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 6.8"></div>
+        <div class="field" style="flex:1"><label>IBU — optional</label><input id="in-ibu" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 65"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Serving</h2>
+      <div id="serve-body" style="margin-bottom:10px"></div>
+      <div style="display:flex;gap:10px">
+        <div class="field" style="flex:1"><label>Serving temp (°C)</label><input id="in-temp" type="text" inputmode="decimal" autocomplete="off" placeholder="Auto"></div>
+        <div class="field" style="flex:1"><label>Glass</label><input id="in-glass" type="text" autocomplete="off" placeholder="Auto"></div>
+      </div>
+      <div id="serve-pairing"></div>
+    </div>
+    <div class="card" id="logform-card">
+      <h2>Log this beer</h2>
+      <div class="field"><label>Your rating</label><div class="stars" id="stars"></div></div>
+      <div class="field"><label>Aroma notes</label><div class="chips" id="chips-aroma"></div></div>
+      <div class="field"><label>Flavor notes</label><div class="chips" id="chips-flavor"></div></div>
+      <div class="field"><label>Taste profile</label><div id="dims"></div></div>
+      <div class="field"><label>Food pairing — optional</label><input id="log-pairing" type="text" autocomplete="off" placeholder="What you had it with"></div>
+      <div style="display:flex;gap:10px">
+        <div class="field" style="flex:1"><label>Price paid — optional</label><input id="log-price" type="text" autocomplete="off" placeholder="e.g. $7"></div>
+        <div class="field" style="flex:1"><label>Where — optional</label><input id="log-where" type="text" autocomplete="off" placeholder="Shop, bar, or brewery"></div>
+      </div>
+      <div class="field"><label>Notes — optional</label><input id="log-notes" type="text" autocomplete="off" placeholder="Anything else worth remembering"></div>
+      <button class="btn primary" id="save-btn">Save to beer log</button>
+    </div>
+  </div>
+  <div id="view-log" class="hidden">
+    <div class="card">
+      <h2>Past beers</h2>
+      <div id="clear-log-wrap" class="hidden" style="margin-bottom:6px"><button type="button" class="btn ghost small" id="clear-log-btn" style="width:auto;padding:8px 16px;font-size:13px">Clear all history</button></div>
+      <div id="log-list"></div>
+    </div>
+  </div>
+</main>
+<div id="photo-view" class="pv-hidden"><img id="photo-view-img" alt="Beer photo"></div>
+<div id="cam-wrap" class="hidden">
+  <video id="cam-video" autoplay playsinline muted></video>
+  <div id="cam-hint">Fit the whole label inside the frame<div class="sub">Move closer until the label fills the frame — bigger type reads better.</div></div>
+  <div id="cam-frame">
+    <span class="grid gl-v" style="left:33.33%"></span><span class="grid gl-v" style="left:66.66%"></span>
+    <span class="grid gl-h" style="top:33.33%"></span><span class="grid gl-h" style="top:66.66%"></span>
+    <span class="cnr tl"></span><span class="cnr tr"></span><span class="cnr bl"></span><span class="cnr br"></span>
+  </div>
+  <div id="cam-bar">
+    <button type="button" id="cam-library" class="cam-side">Library</button>
+    <button type="button" id="cam-shutter" aria-label="Take photo"></button>
+    <button type="button" id="cam-cancel" class="cam-side">Cancel</button>
+  </div>
+</div>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const LS_SEL="froth_sel_v1", LS_LOG="froth_log_v1";
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function vib(p){ try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){} }
+
+/* ================= data ================= */
+const COUNTRIES=["Australia","Austria","Belgium","Brazil","Canada","China","Czech Republic","Denmark","France","Germany","Ireland","Italy","Japan","Mexico","Netherlands","New Zealand","Poland","South Korea","Spain","United Kingdom","USA","Other / custom"];
+const STYLES=["IPA — West Coast","IPA — Hazy / New England","IPA — Double","IPA — Triple","IPA — Session","IPA — Black","Pale Ale","Pale Ale — American","Amber Ale","Red Ale","Brown Ale","Porter","Stout — Dry","Stout — Milk","Stout — Imperial","Stout — Pastry","Barleywine","Scotch Ale / Wee Heavy","Lager — Pilsner","Lager — Helles","Lager — Amber / Vienna","Lager — Dark / Schwarzbier","Lager — Bock / Doppelbock","Lager — Mexican","Wheat — Hefeweizen","Wheat — Witbier","Wheat — American","Kölsch","Altbier","ESB","Saison","Belgian Tripel","Belgian Dubbel","Belgian Quadrupel","Belgian Strong Ale","Lambic / Gueuze","Sour — Gose","Sour — Berliner Weisse","Sour — Fruited","Sour — Flanders","Wild Ale","Other / custom"];
+const AROMAS=["Citrus","Grapefruit","Orange peel","Lemon","Pine","Resin","Dank","Tropical fruit","Mango","Passion fruit","Pineapple","Stone fruit","Peach","Berry","Melon","Floral","Herbal","Grassy","Hay","Biscuit","Bready","Toast","Cracker","Caramel","Toffee","Chocolate","Coffee","Roasted malt","Vanilla","Banana","Clove","Peppery spice","Funky","Tart","Oak","Bourbon","Smoky","Honey"];
+const FLAVORS=["Hoppy","Juicy","Piney","Resiny","Citrusy","Tropical","Fruity","Malty","Biscuity","Bready","Caramel","Toffee","Chocolate","Coffee","Roasty","Dark fruit","Banana","Clove-like","Spicy","Tart","Sour","Funky","Dry","Crisp","Clean","Smooth","Creamy","Bitter finish","Sweet finish","Boozy","Warming"];
+const TASTE_DIMS=["Bitterness","Maltiness","Body","Carbonation","Finish"];
+
+/* ================= state ================= */
+const sel={ country:"", brewery:"", beer:"", style:"", abv:"", ibu:"", temp:"", glass:"", customCountry:false, customStyle:false };
+function selectAllOnFocus(el){
+  const s=()=>{ try{ el.select(); }catch(e){} };
+  el.addEventListener("focus",()=>{ s(); requestAnimationFrame(s); setTimeout(s,100); });
+  el.addEventListener("click",()=>{ if(document.activeElement===el) s(); });
+}
+function makeCombo(inputId, listId, options, onPick){
+  const input=$(inputId), list=$(listId);
+  const norm=options.map(o=>typeof o==="string"?{n:o,sub:""}:{n:o.n,sub:o.sub||""});
+  let current="";
+  function render(filter){
+    const f=(filter||"").trim().toLowerCase();
+    const matches=norm.filter(o=>!f||o.n.toLowerCase().includes(f)||o.sub.toLowerCase().includes(f));
+    let html=matches.map(o=>`<button type="button" data-v="${esc(o.n)}"><span>${esc(o.n)}</span>${o.sub?`<span class="sub">${esc(o.sub)}</span>`:""}</button>`).join("");
+    const exact=norm.some(o=>o.n.toLowerCase()===f);
+    if(f&&!exact) html+=`<button type="button" class="custom" data-v="__custom__">Use “${esc(filter.trim())}”<span class="sub">Not in the list — enter it manually</span></button>`;
+    list.innerHTML=html||`<button type="button" disabled><span class="sub">No matches</span></button>`;
+    list.classList.add("open");
+    list.querySelectorAll("button[data-v]").forEach(b=>{ b.onmousedown=e=>{ e.preventDefault(); pick(b.getAttribute("data-v")); }; });
+  }
+  function pick(v){
+    if(v==="__custom__"){ current=input.value.trim(); onPick(current, true); }
+    else{ current=v; input.value=v; onPick(v, false); }
+    list.classList.remove("open"); input.blur();
+  }
+  input.addEventListener("focus",()=>render(input.value===current?"":input.value));
+  input.addEventListener("input",()=>{ current=""; render(input.value); onPick(input.value.trim(), true); });
+  input.addEventListener("blur",()=>setTimeout(()=>list.classList.remove("open"),150));
+  return { set(v){ current=v||""; input.value=v||""; }, get(){ return current; } };
+}
+function saveSel(){ try{ localStorage.setItem(LS_SEL,JSON.stringify(sel)); }catch(e){} }
+function loadSel(){ try{ const s=JSON.parse(localStorage.getItem(LS_SEL)||"null"); if(s) Object.assign(sel,s); }catch(e){} }
+function onSelChange(){ saveSel(); if(typeof renderServing==="function") renderServing(); }
+function syncClearBtns(){
+  const cc=$("clear-country"); if(cc) cc.classList.toggle("hidden",!$("in-country").value);
+  const cs=$("clear-style"); if(cs) cs.classList.toggle("hidden",!$("in-style").value);
+}
+let comboCountry, comboStyle;
+function applySelToForm(){
+  if(comboCountry) comboCountry.set(sel.country);
+  if(comboStyle) comboStyle.set(sel.style);
+  $("in-brewery").value=sel.brewery||"";
+  $("in-beer").value=sel.beer||"";
+  $("in-abv").value=sel.abv||"";
+  $("in-ibu").value=sel.ibu||"";
+  $("in-temp").value=sel.temp||"";
+  $("in-glass").value=sel.glass||"";
+  syncClearBtns();
+}
+function clearAll(){
+  sel.country=""; sel.brewery=""; sel.beer=""; sel.style=""; sel.abv=""; sel.ibu=""; sel.temp=""; sel.glass="";
+  sel.customCountry=false; sel.customStyle=false;
+  if(typeof clearScanPhoto==="function") clearScanPhoto();
+  serveLock=false; serveSig="";
+  applySelToForm(); onSelChange();
+}
+function switchTab(which){
+  $("tab-taste").classList.toggle("on",which==="taste");
+  $("tab-log").classList.toggle("on",which==="log");
+  $("view-taste").classList.toggle("hidden",which!=="taste");
+  $("view-log").classList.toggle("hidden",which!=="log");
+  if(which==="log") renderLog();
+}
+
+/* ================= log form ================= */
+const dimVals={};
+function buildDims(){
+  const box=$("dims"); box.innerHTML="";
+  TASTE_DIMS.forEach(d=>{
+    dimVals[d]=0;
+    const row=document.createElement("div"); row.className="dimrow";
+    const lab=document.createElement("div"); lab.className="dl"; lab.textContent=d;
+    const bar=document.createElement("div"); bar.className="dimbar";
+    for(let i=1;i<=5;i++){
+      const btn=document.createElement("button");
+      btn.type="button"; btn.dataset.v=i;
+      btn.onclick=()=>{ dimVals[d]=i; paintDim(bar,i); vib(8); };
+      bar.appendChild(btn);
+    }
+    row.appendChild(lab); row.appendChild(bar); box.appendChild(row);
+  });
+}
+function paintDim(bar,v){ bar.querySelectorAll("button").forEach(x=>x.classList.toggle("on",+x.dataset.v<=v)); }
+function resetDims(){ buildDims(); }
+let rating=0;
+const pickedAroma=new Set(), pickedFlavor=new Set();
+function buildStars(){
+  const box=$("stars"); box.innerHTML="";
+  for(let i=1;i<=5;i++){
+    const b=document.createElement("button");
+    b.type="button"; b.textContent="★"; b.dataset.v=i;
+    b.onclick=()=>{ rating=i; paintStars(); vib(8); };
+    box.appendChild(b);
+  }
+}
+function paintStars(){ $("stars").querySelectorAll("button").forEach(b=>b.classList.toggle("lit",+b.dataset.v<=rating)); }
+function buildChips(id, items, set){
+  const box=$(id); box.innerHTML="";
+  items.forEach(name=>{
+    const b=document.createElement("button");
+    b.type="button"; b.textContent=name;
+    if(set.has(name)) b.classList.add("on");
+    b.onclick=()=>{ if(set.has(name)) set.delete(name); else set.add(name); b.classList.toggle("on"); vib(6); };
+    box.appendChild(b);
+  });
+}
+let pendingPhoto=null;
+function setScanPhoto(url){
+  pendingPhoto=url||null;
+  const w=$("scan-photo-wrap"); if(!w) return;
+  if(url){ $("scan-photo-preview").src=url; w.classList.remove("hidden"); }
+  else{ w.classList.add("hidden"); }
+}
+function clearScanPhoto(){ setScanPhoto(null); }
+function fileToDataURL(file){
+  return new Promise(res=>{
+    const img=new Image();
+    img.onload=()=>{
+      const scale=Math.min(1,1024/Math.max(img.width,img.height));
+      const cv=document.createElement("canvas");
+      cv.width=Math.round(img.width*scale); cv.height=Math.round(img.height*scale);
+      cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+      URL.revokeObjectURL(img.src);
+      res(cv.toDataURL("image/jpeg",0.78));
+    };
+    img.onerror=()=>res(null);
+    img.src=URL.createObjectURL(file);
+  });
+}
+function setupPhoto(){
+  $("photo-view").addEventListener("click",()=>$("photo-view").classList.add("pv-hidden"));
+  const rm=$("scan-photo-remove"); if(rm) rm.onclick=()=>clearScanPhoto();
+}
+function getLog(){ try{ return JSON.parse(localStorage.getItem(LS_LOG)||"[]"); }catch(e){ return []; } }
+function setLog(a){ try{ localStorage.setItem(LS_LOG,JSON.stringify(a)); return true; }catch(e){ return false; } }
+function saveBeer(){
+  if(!rating){ alert("Tap the stars to rate this beer first."); return; }
+  const log=getLog();
+  log.unshift({
+    id:Date.now(), date:new Date().toISOString(),
+    country:sel.country, brewery:sel.brewery, beer:sel.beer, style:sel.style, abv:sel.abv, ibu:sel.ibu, temp:sel.temp, glass:sel.glass,
+    rating, aroma:[...pickedAroma], flavor:[...pickedFlavor],
+    dims:Object.assign({},dimVals),
+    pairing:$("log-pairing").value.trim(),
+    price:$("log-price").value.trim(),
+    where:$("log-where").value.trim(),
+    notes:$("log-notes").value.trim(),
+    photo:pendingPhoto||null
+  });
+  let savedOk=setLog(log);
+  if(!savedOk&&log[0].photo){
+    log[0].photo=null; savedOk=setLog(log);
+    if(savedOk) alert("Saved — but browser storage is nearly full, so the photo was left out.");
+  }
+  if(!savedOk){ alert("Could not save — browser storage is full. Delete some old log entries and try again."); return; }
+  rating=0; paintStars(); pickedAroma.clear(); pickedFlavor.clear(); resetDims();
+  buildChips("chips-aroma",AROMAS,pickedAroma);
+  buildChips("chips-flavor",FLAVORS,pickedFlavor);
+  $("log-pairing").value=""; $("log-price").value=""; $("log-where").value=""; $("log-notes").value="";
+  clearScanPhoto();
+  switchTab("log");
+}
+function loadEntry(e){
+  if(!e) return;
+  sel.country=e.country||""; sel.brewery=e.brewery||""; sel.beer=e.beer||""; sel.style=e.style||"";
+  sel.abv=e.abv||""; sel.ibu=e.ibu||""; sel.temp=e.temp||""; sel.glass=e.glass||"";
+  sel.customCountry=!!sel.country&&!COUNTRIES.includes(sel.country);
+  sel.customStyle=!!sel.style&&!STYLES.includes(sel.style);
+  if(e.photo) setScanPhoto(e.photo); else clearScanPhoto();
+  serveLock=true;
+  applySelToForm(); onSelChange(); vib(10);
+  switchTab("taste");
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function renderLog(){
+  const log=getLog();
+  const clw=$("clear-log-wrap"); if(clw) clw.classList.toggle("hidden",!log.length);
+  const box=$("log-list");
+  if(!log.length){ box.innerHTML=`<div class="empty">No beers logged yet.<br>Fill in a beer on the Taste tab, taste it, then rate it.</div>`; return; }
+  box.innerHTML=log.map(e=>{
+    const d=new Date(e.date);
+    const ds=d.toLocaleDateString("en-US",{month:"short",day:"numeric"})+" "+d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+    const stars="★".repeat(e.rating)+"☆".repeat(5-e.rating);
+    const titleLine=[e.brewery,e.beer].filter(Boolean).join(" · ");
+    const styleLine=[e.style, e.abv?e.abv+"% ABV":"", e.ibu?e.ibu+" IBU":"", e.country].filter(Boolean).join(" · ");
+    const serve=[];
+    if(e.temp) serve.push("Served "+e.temp+"°C");
+    if(e.glass) serve.push(e.glass);
+    const notes=[];
+    if(e.aroma&&e.aroma.length) notes.push("Aroma: "+e.aroma.join(", "));
+    if(e.flavor&&e.flavor.length) notes.push("Flavor: "+e.flavor.join(", "));
+    if(e.pairing) notes.push("Pairing: "+e.pairing);
+    const priceLine=[e.price,e.where].filter(Boolean).join(" · ");
+    if(priceLine) notes.push(priceLine);
+    if(e.notes) notes.push(e.notes);
+    let dimHtml="";
+    if(e.dims){
+      const setDims=TASTE_DIMS.filter(x=>e.dims[x]>0);
+      if(setDims.length){
+        dimHtml=`<div style="margin:6px 0">`+setDims.map(x=>
+          `<div class="dimview"><div class="dl">${esc(x)}</div><div class="dimtrack"><div class="dimfill" style="width:${e.dims[x]*20}%"></div></div><div class="dv">${e.dims[x]}</div></div>`
+        ).join("")+`</div>`;
+      }
+    }
+    return `<div class="log-item" data-id="${e.id}">
+      <div class="meta">${ds}<span style="float:right;font-size:12px;color:var(--acc);font-weight:600">↺ Load</span></div>
+      <div class="sel"><span class="r">${stars}</span> ${esc(titleLine)}</div>
+      ${styleLine?`<div class="meta">${esc(styleLine)}</div>`:""}
+      ${serve.length?`<div class="meta">${esc(serve.join(" · "))}</div>`:""}
+      ${e.photo?`<img data-photo="1" src="${e.photo}" alt="Beer label photo" style="width:100%;max-height:180px;object-fit:cover;border-radius:10px;margin-top:6px;cursor:pointer">`:""}
+      ${dimHtml}
+      ${notes.length?`<div class="notes">${notes.map(esc).join("<br>")}</div>`:""}
+      <div style="margin-top:6px"><button type="button" class="btn ghost small" data-del="${e.id}" style="width:auto;padding:6px 14px;font-size:13px">Delete</button></div>
+    </div>`;
+  }).join("");
+  box.querySelectorAll("[data-del]").forEach(b=>{
+    b.onclick=()=>{ if(!confirm("Delete this log entry?")) return; setLog(getLog().filter(e=>e.id!==+b.getAttribute("data-del"))); renderLog(); };
+  });
+  box.querySelectorAll("[data-photo]").forEach(im=>{
+    im.onclick=()=>{ const pv=$("photo-view"), pvImg=$("photo-view-img"); if(!pv||!pvImg) return; pvImg.src=im.src; pv.classList.remove("pv-hidden"); };
+  });
+  box.querySelectorAll(".log-item").forEach(item=>{
+    item.addEventListener("click",ev=>{
+      if(ev.target.closest("[data-del]")||ev.target.closest("[data-photo]")) return;
+      const entry=getLog().find(x=>x.id===+item.getAttribute("data-id"));
+      if(entry) loadEntry(entry);
+    });
+  });
+}
+
+/* ================= serving recommendations ================= */
+let serveSig="", serveLock=false, autoTemp="", autoGlass="";
+const SERVE_PROFILES={
+ hazy:{temp:[4,7],glass:"Tulip",note:"Drink it fresh — hop aroma fades fast, and a hazy IPA does not age well.",pairings:["Spicy tacos","Fried chicken","Smash burger","Mango salsa","Thai curry"]},
+ west_ipa:{temp:[4,7],glass:"IPA glass",note:"A clean, cold pour keeps the bitterness crisp.",pairings:["Smash burger","Spicy wings","Fish and chips","Blue cheese","Grilled sausages"]},
+ dipa:{temp:[5,8],glass:"Tulip",note:"Let it warm for a minute or two — the hop aroma opens up as it loses the fridge chill.",pairings:["Smash burger","Spicy Thai","Aged cheddar","BBQ brisket"]},
+ pale:{temp:[4,7],glass:"Pint glass",note:"",pairings:["Fish and chips","Roast chicken","Burgers","Pizza","Grilled shrimp"]},
+ amber_ale:{temp:[5,8],glass:"Pint glass",note:"",pairings:["Roast pork","BBQ chicken","Cheddar burger","Grilled sausages"]},
+ brown:{temp:[7,10],glass:"Pint glass",note:"Too cold and the nutty malt disappears — let it sit for a few minutes first.",pairings:["Roast beef","Mushroom dishes","Gouda","Pecan pie"]},
+ porter:{temp:[7,10],glass:"Pint glass",note:"Serve it cool, not cold, so the chocolate and roast notes show.",pairings:["Oysters","Chocolate cake","Roast beef","Smoked cheese"]},
+ stout_dry:{temp:[7,10],glass:"Pint glass",note:"",pairings:["Oysters","Stew","Chocolate desserts","Roast lamb"]},
+ stout_milk:{temp:[7,10],glass:"Snifter",note:"A little warmth brings out the sweetness and chocolate.",pairings:["Chocolate cake","Ice cream","Cheesecake","Berries"]},
+ stout_imp:{temp:[10,13],glass:"Snifter",note:"Let it warm slowly in the glass — it changes a lot between the first sip and the last.",pairings:["Dark chocolate","Blue cheese","Brownies","Vanilla ice cream"]},
+ barleywine:{temp:[10,13],glass:"Snifter",note:"Sip it like a spirit — small pours, served warm enough for the malt to open up.",pairings:["Blue cheese","Toffee pudding","Aged cheddar","Crème brûlée"]},
+ pilsner:{temp:[3,6],glass:"Pilsner glass",note:"Pour it hard down the center for a thick, lasting head.",pairings:["Schnitzel","Grilled sausages","Pretzels","Sushi","Fried chicken"]},
+ helles:{temp:[3,6],glass:"Mug",note:"",pairings:["Pretzels","Roast chicken","Grilled sausages","Potato salad"]},
+ vienna:{temp:[4,7],glass:"Mug",note:"",pairings:["Tacos al pastor","Grilled chicken","Chiles rellenos","Roast pork"]},
+ dark_lager:{temp:[5,8],glass:"Mug",note:"",pairings:["Roast duck","Grilled mushrooms","Pretzels","Schnitzel"]},
+ bock:{temp:[7,10],glass:"Mug",note:"",pairings:["Roast pork","Bratwurst","Aged Gouda","Caramel desserts"]},
+ hefe:{temp:[4,7],glass:"Weissbier glass",note:"Pour it gently, then swirl the last bit of yeast in the bottle and add it on top.",pairings:["Weisswurst and pretzels","Eggs Benedict","Banana bread","Grilled seafood"]},
+ wit:{temp:[3,6],glass:"Tumbler",note:"",pairings:["Mussels","Grilled shrimp","Salads","Goat cheese"]},
+ wheat_us:{temp:[3,6],glass:"Pint glass",note:"",pairings:["Salads","Grilled fish","Fruit desserts","Light pasta"]},
+ kolsch:{temp:[3,6],glass:"Stange",note:"Traditionally served in a small stange so every pour stays cold and fresh.",pairings:["Schnitzel","Grilled fish","Pretzels","Light salads"]},
+ esb:{temp:[8,11],glass:"Pint glass",note:"Cellar temperature, not fridge-cold — that is how this style is meant to taste.",pairings:["Fish and chips","Roast lamb","Cheddar","Meat pie"]},
+ saison:{temp:[5,8],glass:"Tulip",note:"",pairings:["Mussels","Roast chicken","Goat cheese","Thai dishes","Grilled vegetables"]},
+ tripel:{temp:[6,9],glass:"Chalice",note:"Pour it carefully and leave the yeast in the bottle unless you like it hazy.",pairings:["Mussels","Roast chicken","Brie","Asparagus"]},
+ dubbel:{temp:[8,11],glass:"Chalice",note:"",pairings:["Braised beef","Gouda","Chocolate","Roast duck"]},
+ quad:{temp:[10,13],glass:"Chalice",note:"Let it warm in the glass — the dark-fruit flavors need it.",pairings:["Dark chocolate","Blue cheese","Braised short ribs","Fig desserts"]},
+ lambic:{temp:[6,9],glass:"Tulip",note:"Serve it in a small pour — the acidity is intense.",pairings:["Mussels","Goat cheese","Fruit desserts","Charcuterie"]},
+ gose:{temp:[3,6],glass:"Stange",note:"",pairings:["Ceviche","Grilled shrimp","Salads","Soft pretzels"]},
+ berliner:{temp:[3,6],glass:"Tumbler",note:"",pairings:["Salads","Grilled fish","Fruit desserts","Light cheese"]},
+ fruited_sour:{temp:[4,7],glass:"Tulip",note:"Drink it fresh — the fruit fades with age.",pairings:["Cheesecake","Salads","Grilled shrimp","Soft cheese"]},
+ sour:{temp:[5,8],glass:"Tulip",note:"",pairings:["Mussels","Charcuterie","Goat cheese","Rich pâté"]}
+};
+function beerStyleKey(){
+  const s=(sel.style||"").toLowerCase();
+  if(!s) return "";
+  if(s.includes("hazy")||s.includes("new england")) return "hazy";
+  if(s.includes("triple ipa")||s.includes("double")) return "dipa";
+  if(s.includes("west coast")||s.includes("ipa")) return "west_ipa";
+  if(s.includes("pale ale")) return "pale";
+  if(s.includes("amber ale")||s.includes("red ale")) return "amber_ale";
+  if(s.includes("brown")) return "brown";
+  if(s.includes("imperial")&&s.includes("stout")) return "stout_imp";
+  if(s.includes("milk")&&s.includes("stout")) return "stout_milk";
+  if(s.includes("pastry")) return "stout_imp";
+  if(s.includes("stout")) return "stout_dry";
+  if(s.includes("porter")) return "porter";
+  if(s.includes("barleywine")) return "barleywine";
+  if(s.includes("scotch")||s.includes("wee heavy")) return "barleywine";
+  if(s.includes("pilsner")) return "pilsner";
+  if(s.includes("helles")) return "helles";
+  if(s.includes("vienna")||s.includes("mexican")||s.includes("amber /")) return "vienna";
+  if(s.includes("schwarzbier")||s.includes("dark")) return "dark_lager";
+  if(s.includes("bock")) return "bock";
+  if(s.includes("hefeweizen")) return "hefe";
+  if(s.includes("witbier")) return "wit";
+  if(s.includes("wheat")) return "wheat_us";
+  if(s.includes("kölsch")||s.includes("kolsch")) return "kolsch";
+  if(s.includes("altbier")) return "esb";
+  if(s.includes("esb")) return "esb";
+  if(s.includes("saison")) return "saison";
+  if(s.includes("tripel")) return "tripel";
+  if(s.includes("dubbel")) return "dubbel";
+  if(s.includes("quad")) return "quad";
+  if(s.includes("lambic")||s.includes("gueuze")) return "lambic";
+  if(s.includes("gose")) return "gose";
+  if(s.includes("berliner")) return "berliner";
+  if(s.includes("fruited")) return "fruited_sour";
+  if(s.includes("sour")||s.includes("flanders")||s.includes("wild")) return "sour";
+  return "";
+}
+function computeProfile(){
+  const key=beerStyleKey(); if(!key) return null;
+  const base=SERVE_PROFILES[key]; if(!base) return null;
+  let note=base.note||"";
+  const abv=parseFloat(sel.abv);
+  if(!isNaN(abv)&&abv>=9&&!note) note="High ABV — a smaller pour and a little warmth help the flavors open up.";
+  if(!isNaN(abv)&&abv>=9&&(key==="west_ipa"||key==="hazy")) note="High ABV for the style — let it warm a touch so the alcohol does not mask the hops.";
+  return { key, temp:base.temp, glass:base.glass, pairings:base.pairings, note,
+    tempSet:String(Math.round((base.temp[0]+base.temp[1])/2)), glassSet:base.glass };
+}
+function renderServing(){
+  const body=$("serve-body"), pair=$("serve-pairing");
+  if(!body||!pair) return;
+  const p=computeProfile();
+  if(!p){
+    body.innerHTML=`<div style="font-size:14px;color:var(--sub)">Scan a label or pick a style — temperature, glass, and pairing suggestions appear here.</div>`;
+    pair.innerHTML=""; return;
+  }
+  body.innerHTML=
+    `<div class="spec"><span class="k">Serving temp</span><span class="v">${p.temp[0]}–${p.temp[1]}°C</span></div>`+
+    `<div class="spec"><span class="k">Glass</span><span class="v">${esc(p.glass)}</span></div>`+
+    (p.note?`<div style="font-size:13px;color:var(--sub);margin-top:8px">${esc(p.note)}</div>`:"");
+  pair.innerHTML=`<label style="display:block;font-size:13px;color:var(--sub);margin:10px 0 6px">Pairs well with</label><div class="chips" style="margin:0">`+
+    p.pairings.map(x=>`<span style="border:1px solid var(--line);background:#fafafa;border-radius:20px;padding:8px 14px;font-size:14px">${esc(x)}</span>`).join("")+`</div>`;
+  if(serveLock) return;
+  const sig=[sel.style,sel.abv].join("|");
+  const ti=$("in-temp"), gi=$("in-glass");
+  if(sig!==serveSig){
+    serveSig=sig;
+    if(ti){ ti.value=p.tempSet; sel.temp=p.tempSet; autoTemp=p.tempSet; }
+    if(gi){ gi.value=p.glassSet; sel.glass=p.glassSet; autoGlass=p.glassSet; }
+  }else{
+    if(ti&&(ti.value.trim()===""||ti.value.trim()===autoTemp)){ ti.value=p.tempSet; sel.temp=p.tempSet; autoTemp=p.tempSet; }
+    if(gi&&(gi.value.trim()===""||gi.value.trim()===autoGlass)){ gi.value=p.glassSet; sel.glass=p.glassSet; autoGlass=p.glassSet; }
+  }
+}
+
+/* ================= label scanner (OCR) ================= */
+function loadTesseract(){
+  return new Promise((resolve,reject)=>{
+    if(window.Tesseract) return resolve(window.Tesseract);
+    const s=document.createElement("script");
+    s.src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+    s.onload=()=>resolve(window.Tesseract);
+    s.onerror=()=>reject(new Error("OCR library failed to load"));
+    document.head.appendChild(s);
+  });
+}
+function parseLabelText(text){
+  const t=" "+String(text||"").toLowerCase().replace(/\s+/g," ")+" ";
+  const out={country:"",brewery:"",beer:"",style:"",abv:"",ibu:""};
+  /* ABV: prefer a % near ALC / ABV / VOL, otherwise the most common % in range. */
+  const abvNear=t.match(/(?:alc(?:ohol)?|abv)[^0-9%]{0,12}(\d{1,2}(?:\.\d+)?)\s*%/)||t.match(/(\d{1,2}(?:\.\d+)?)\s*%\s*(?:alc|abv|vol)/);
+  if(abvNear){ const v=parseFloat(abvNear[1]); if(v>=0.5&&v<=20) out.abv=String(v); }
+  if(!out.abv){
+    const counts={};
+    (t.match(/(\d{1,2}(?:\.\d+)?)\s*%/g)||[]).forEach(m=>{ const v=parseFloat(m); if(v>=0.5&&v<=20) counts[v]=(counts[v]||0)+1; });
+    const ks=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+    if(ks.length) out.abv=ks[0];
+  }
+  const ibuM=t.match(/(\d{1,3})\s*(?:ibu|ibus)\b/)||t.match(/\bibu[^0-9]{0,8}(\d{1,3})\b/);
+  if(ibuM){ const v=parseInt(ibuM[1],10); if(v>=0&&v<=150) out.ibu=String(v); }
+  const COUNTRY_KEYS=[["belgium","Belgium"],["belgië","Belgium"],["belgique","Belgium"],["deutschland","Germany"],["germany","Germany"],["česká","Czech Republic"],["czech","Czech Republic"],["ireland","Ireland"],["éire","Ireland"],["nederland","Netherlands"],["netherlands","Netherlands"],["danmark","Denmark"],["denmark","Denmark"],["mexico","Mexico"],["méxico","Mexico"],["japan","Japan"],["日本","Japan"],["한국","South Korea"],["korea","South Korea"],["espana","Spain"],["españa","Spain"],["spain","Spain"],["italia","Italy"],["italy","Italy"],["france","France"],["österreich","Austria"],["austria","Austria"],["polska","Poland"],["poland","Poland"],["brasil","Brazil"],["brazil","Brazil"],["canada","Canada"],["australia","Australia"],["new zealand","New Zealand"],["england","United Kingdom"],["scotland","United Kingdom"],["united kingdom","United Kingdom"],["united states","USA"],["california","USA"],["oregon","USA"],["colorado","USA"],["vermont","USA"],["new york","USA"],["massachusetts","USA"]];
+  for(const [k,v] of COUNTRY_KEYS){ if(t.includes(k)){ out.country=v; break; } }
+  /* Style: longest / most specific phrases first, so "hazy IPA" and
+     "double IPA" win over plain "IPA". */
+  const STYLE_KEYS=[
+    ["hazy ipa","IPA — Hazy / New England"],["new england ipa","IPA — Hazy / New England"],["neipa","IPA — Hazy / New England"],["juicy ipa","IPA — Hazy / New England"],
+    ["double ipa","IPA — Double"],["imperial ipa","IPA — Double"],["dipa","IPA — Double"],
+    ["triple ipa","IPA — Triple"],["tipa","IPA — Triple"],
+    ["session ipa","IPA — Session"],["black ipa","IPA — Black"],["west coast ipa","IPA — West Coast"],
+    ["india pale ale","IPA — West Coast"],["ipa","IPA — West Coast"],
+    ["imperial stout","Stout — Imperial"],["pastry stout","Stout — Pastry"],["milk stout","Stout — Milk"],["dry stout","Stout — Dry"],["oatmeal stout","Stout — Dry"],["stout","Stout — Dry"],
+    ["porter","Porter"],["barleywine","Barleywine"],["barley wine","Barleywine"],["wee heavy","Scotch Ale / Wee Heavy"],["scotch ale","Scotch Ale / Wee Heavy"],
+    ["pilsner","Lager — Pilsner"],["pilsener","Lager — Pilsner"],["pils","Lager — Pilsner"],
+    ["helles","Lager — Helles"],["schwarzbier","Lager — Dark / Schwarzbier"],["doppelbock","Lager — Bock / Doppelbock"],["bock","Lager — Bock / Doppelbock"],["vienna lager","Lager — Amber / Vienna"],["amber lager","Lager — Amber / Vienna"],["mexican lager","Lager — Mexican"],["lager","Lager — Helles"],
+    ["hefeweizen","Wheat — Hefeweizen"],["weissbier","Wheat — Hefeweizen"],["witbier","Wheat — Witbier"],["wheat ale","Wheat — American"],["wheat beer","Wheat — American"],
+    ["kölsch","Kölsch"],["kolsch","Kölsch"],["altbier","Altbier"],["extra special bitter","ESB"],["esb","ESB"],
+    ["saison","Saison"],["tripel","Belgian Tripel"],["dubbel","Belgian Dubbel"],["quadrupel","Belgian Quadrupel"],["quad","Belgian Quadrupel"],["gueuze","Lambic / Gueuze"],["lambic","Lambic / Gueuze"],
+    ["berliner weisse","Sour — Berliner Weisse"],["berliner","Sour — Berliner Weisse"],["gose","Sour — Gose"],["flanders","Sour — Flanders"],["fruited sour","Sour — Fruited"],["sour ale","Sour — Fruited"],["sour","Sour — Fruited"],["wild ale","Wild Ale"],
+    ["amber ale","Amber Ale"],["red ale","Red Ale"],["brown ale","Brown Ale"],["pale ale","Pale Ale"]
+  ];
+  for(const [k,v] of STYLE_KEYS){ if(t.includes(" "+k+" ")||t.includes(" "+k+"\n")||(" "+t+" ").includes(" "+k+" ")){ out.style=v; break; } }
+  /* Brewery: a line naming a brewery / brewing company, cleaned like Swirl's producer. */
+  const rawLines=String(text||"").split(/\r?\n/);
+  const toTitle=s=>s.toLowerCase().replace(/(^|[\s\-'])(\S)/g,(m,pre,ch)=>pre+ch.toUpperCase());
+  const SHORT_OK=new Set(["de","du","la","le","di","da","von","the","of","&"]);
+  const cleanName=s=>String(s||"").replace(/\s+/g," ").trim()
+    .replace(/^[^A-Za-zÀ-Þ]+/,"").replace(/[^A-Za-zÀ-Þ)&]+$/,"")
+    .split(" ").filter(tok=>{ const letters=tok.replace(/[^A-Za-zÀ-Þ]/g,""); return letters.length>=2||SHORT_OK.has(tok.toLowerCase()); }).join(" ").trim();
+  for(let i=0;i<rawLines.length&&!out.brewery;i++){
+    if(!/brewery|brewing|brauerei|brasserie|brouwerij|cervecer[ií]a|brew\s*co\b/i.test(rawLines[i])) continue;
+    if(/brewed (?:and|&)|brewed by|imported|distributed|government|warning/i.test(rawLines[i])) continue;
+    let p=cleanName(rawLines[i].replace(/®|™/g,""));
+    if(p.length<4||p.length>60) continue;
+    if(/^(brewery|brewing|brauerei|brasserie|brouwerij|cervecer[ií]a)(\s+(company|co\.?))?$/i.test(p)) continue;
+    if(p===p.toUpperCase()&&/[A-ZÀ-Þ]/.test(p)) p=toTitle(p);
+    out.brewery=p;
+  }
+  if(!out.brewery){
+    const stop=new Set(["BREWING","BREWERY","BREWED","INDIA","PALE","LAGER","STOUT","PORTER","IPA","ALE","BEER","BREW","COMPANY","CRAFT","EST","SINCE","ALC","VOL","IBU","USA","AMERICA","AMERICAN","PILSNER","PILSENER","HEFEWEIZEN","WEISSBIER","WITBIER","SAISON","TRIPEL","DUBBEL","GOSE","LAMBIC","HELLES","BOCK","KOLSCH","KÖLSCH","BERLINER","BARLEYWINE","SOUR"]);
+    const counts={};
+    (String(text||"").match(/[A-ZÀ-Þ]{5,}/g)||[]).forEach(tok=>{ if(!stop.has(tok)) counts[tok]=(counts[tok]||0)+1; });
+    let best="", bn=1;
+    Object.keys(counts).forEach(tok=>{ if(counts[tok]>bn){ bn=counts[tok]; best=tok; } });
+    if(best) out.brewery=best.charAt(0)+best.slice(1).toLowerCase();
+  }
+  return out;
+}
+function fileToOCRImage(file, invert){
+  return new Promise(res=>{
+    const img=new Image();
+    img.onload=()=>{
+      const scale=Math.min(2,1600/Math.max(img.width,img.height));
+      const cv=document.createElement("canvas");
+      cv.width=Math.round(img.width*scale); cv.height=Math.round(img.height*scale);
+      const ctx=cv.getContext("2d");
+      try{ ctx.filter="grayscale(1) contrast(1.35) brightness(1.05)"; }catch(e){}
+      ctx.drawImage(img,0,0,cv.width,cv.height);
+      if(invert){
+        try{
+          const id=ctx.getImageData(0,0,cv.width,cv.height), d=id.data;
+          for(let i=0;i<d.length;i+=4){ d[i]=255-d[i]; d[i+1]=255-d[i+1]; d[i+2]=255-d[i+2]; }
+          ctx.putImageData(id,0,0);
+        }catch(e){}
+      }
+      URL.revokeObjectURL(img.src);
+      res(cv);
+    };
+    img.onerror=()=>res(null);
+    img.src=URL.createObjectURL(file);
+  });
+}
+async function runScan(file){
+  const wrap=$("scan-status-wrap"), st=$("scan-status");
+  wrap.classList.remove("hidden");
+  const merge=!!pendingPhoto;
+  serveLock=false;
+  st.textContent=merge?"Reading the next label…":"Reading the label…";
+  const shot=await fileToDataURL(file);
+  if(shot&&!merge) setScanPhoto(shot);
+  try{
+    const T=await loadTesseract();
+    const worker=await T.createWorker(["eng","fra","spa","deu","nld"]);
+    const texts=[];
+    const ocrText=async img=>{ try{ const r=await worker.recognize(img); return (r.data&&r.data.text)||""; }catch(e){ return ""; } };
+    const bandCanvas=(cv,i,n)=>{
+      const h=cv.height/n, ov=h*0.18;
+      const y0=Math.max(0,Math.round(i*h-ov)), y1=Math.min(cv.height,Math.round((i+1)*h+ov));
+      const out=document.createElement("canvas"); out.width=cv.width; out.height=y1-y0;
+      out.getContext("2d").drawImage(cv,0,y0,cv.width,y1-y0,0,0,cv.width,y1-y0);
+      return out;
+    };
+    const ocrImg=await fileToOCRImage(file,false);
+    texts.push(await ocrText(ocrImg||file));
+    let p=parseLabelText(texts.join("\n"));
+    if((!p.brewery||!p.style)&&ocrImg){
+      for(let i=0;i<3;i++){
+        texts.push(await ocrText(bandCanvas(ocrImg,i,3)));
+        p=parseLabelText(texts.join("\n"));
+        if(p.brewery&&p.style) break;
+      }
+    }
+    if(!p.brewery&&!p.style&&!p.abv){
+      try{ const inv=await fileToOCRImage(file,true); if(inv){ texts.push(await ocrText(inv)); p=parseLabelText(texts.join("\n")); } }catch(e){}
+    }
+    await worker.terminate();
+    const applied=[];
+    if(!merge){ sel.country=""; sel.brewery=""; sel.beer=""; sel.style=""; sel.abv=""; sel.ibu=""; }
+    const fill=(key,label)=>{ if(p[key]&&(!merge||!sel[key])){ sel[key]=p[key]; applied.push(label+": "+p[key]); } };
+    fill("country","country"); fill("brewery","brewery"); fill("style","style"); fill("abv","ABV"); fill("ibu","IBU");
+    sel.customCountry=!!sel.country&&!COUNTRIES.includes(sel.country);
+    sel.customStyle=!!sel.style&&!STYLES.includes(sel.style);
+    applySelToForm(); onSelChange();
+    st.textContent=applied.length
+      ?((merge?"Merged — added ":"Filled from the label — ")+applied.join(" · ")+". Check and fix anything off."+(merge?"":" Tip: the back of the can or bottle usually lists the brewery, style, and ABV — scan it too; extra scans only fill empty fields."))
+      :(merge?"Nothing new to add — everything readable on this label is already filled.":"Couldn't read this label clearly — try the back label, or type the details in manually.");
+  }catch(e){
+    st.textContent="Scan failed — type the details in manually.";
+  }
+}
+let camStream=null;
+async function openCamera(){
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({ video:{ facingMode:"environment", width:{ideal:1920}, height:{ideal:1920} }, audio:false });
+  }catch(e){ $("scan-file").click(); return; }
+  const v=$("cam-video"); v.srcObject=camStream;
+  $("cam-wrap").classList.remove("hidden");
+  try{ await v.play(); }catch(e){}
+}
+function closeCamera(){
+  if(camStream){ camStream.getTracks().forEach(tr=>tr.stop()); camStream=null; }
+  const v=$("cam-video"); if(v) v.srcObject=null;
+  $("cam-wrap").classList.add("hidden");
+}
+function captureLabel(){
+  const v=$("cam-video"), fr=$("cam-frame");
+  if(!v.videoWidth||!v.videoHeight){ closeCamera(); $("scan-file").click(); return; }
+  const vr=v.getBoundingClientRect(), rr=fr.getBoundingClientRect();
+  const s=Math.max(vr.width/v.videoWidth, vr.height/v.videoHeight);
+  const ox=(vr.width-v.videoWidth*s)/2, oy=(vr.height-v.videoHeight*s)/2;
+  let sx=(rr.left-vr.left-ox)/s, sy=(rr.top-vr.top-oy)/s, sw=rr.width/s, sh=rr.height/s;
+  const mx=sw*0.03, my=sh*0.03; sx-=mx; sy-=my; sw+=mx*2; sh+=my*2;
+  sx=Math.max(0,sx); sy=Math.max(0,sy);
+  sw=Math.min(v.videoWidth-sx,sw); sh=Math.min(v.videoHeight-sy,sh);
+  const cv=document.createElement("canvas");
+  cv.width=Math.max(2,Math.round(sw)); cv.height=Math.max(2,Math.round(sh));
+  cv.getContext("2d").drawImage(v,sx,sy,sw,sh,0,0,cv.width,cv.height);
+  vib(10);
+  closeCamera();
+  if(cv.toBlob) cv.toBlob(b=>{ if(b) runScan(new File([b],"label.jpg",{type:"image/jpeg"})); else $("scan-file").click(); },"image/jpeg",0.92);
+  else $("scan-file").click();
+}
+(function init(){
+  loadSel();
+  const pinOther=(a,b)=>a==="Other / custom"?1:b==="Other / custom"?-1:a.localeCompare(b);
+  comboCountry=makeCombo("in-country","list-country",[...COUNTRIES].sort(pinOther),(v,c)=>{ serveLock=false; sel.country=v; sel.customCountry=c; syncClearBtns(); onSelChange(); });
+  comboStyle=makeCombo("in-style","list-style",[...STYLES].sort(pinOther),(v,c)=>{ serveLock=false; sel.style=v; sel.customStyle=c; syncClearBtns(); onSelChange(); });
+  [["in-brewery","brewery"],["in-beer","beer"],["in-abv","abv"],["in-ibu","ibu"],["in-temp","temp"],["in-glass","glass"]].forEach(([id,key])=>{
+    const el=$(id); if(!el) return;
+    el.addEventListener("input",()=>{ sel[key]=el.value.trim(); if(key!=="temp"&&key!=="glass") serveLock=false; onSelChange(); });
+    selectAllOnFocus(el);
+  });
+  ["in-country","in-style"].forEach(id=>{
+    const el=$(id);
+    el.addEventListener("input",syncClearBtns);
+    el.addEventListener("blur",()=>setTimeout(syncClearBtns,200));
+  });
+  const cb=$("clear-country"); if(cb) cb.onclick=()=>{ sel.country=""; sel.customCountry=false; comboCountry.set(""); syncClearBtns(); onSelChange(); };
+  const csb2=$("clear-style"); if(csb2) csb2.onclick=()=>{ sel.style=""; sel.customStyle=false; comboStyle.set(""); syncClearBtns(); onSelChange(); };
+  $("scan-btn").onclick=()=>{ if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia) openCamera(); else $("scan-file").click(); };
+  const clb2=$("cam-library"); if(clb2) clb2.onclick=()=>{ closeCamera(); $("scan-file").click(); };
+  const ccb=$("cam-cancel"); if(ccb) ccb.onclick=()=>closeCamera();
+  const csb=$("cam-shutter"); if(csb) csb.onclick=()=>captureLabel();
+  $("scan-file").addEventListener("change",e=>{ const f=e.target.files&&e.target.files[0]; if(f) runScan(f); e.target.value=""; });
+  $("clear-btn").onclick=()=>{ if(confirm("Clear all beer fields?")) clearAll(); };
+  $("save-btn").onclick=saveBeer;
+  const clb=$("clear-log-btn");
+  if(clb) clb.onclick=()=>{ if(confirm("Delete ALL beer log entries? This cannot be undone.")){ setLog([]); renderLog(); } };
+  $("tab-taste").onclick=()=>switchTab("taste");
+  $("tab-log").onclick=()=>switchTab("log");
+  buildStars(); paintStars();
+  buildChips("chips-aroma",AROMAS,pickedAroma);
+  buildChips("chips-flavor",FLAVORS,pickedFlavor);
+  buildDims();
+  setupPhoto();
+  applySelToForm();
+  renderServing();
+  renderLog();
+})();
+</script>
+</body>
+</html>
